@@ -30,7 +30,7 @@ class Algorithm:
         """
         return x < len(self.board) and y < len(self.board)
 
-    def _get_all_line(self, position: List[int, int], color: int):
+    def _get_position_all_line(self, position: List[int, int], color: int) -> List[List[int, List[int, int], List[bool, bool]]]:
         lines = []
         other_color = 1 if color == 2 else 2  # 对手颜色
         for direction in [[0, 1], [0, -1], [1, 1], [1, -1]]:
@@ -61,3 +61,7 @@ class Algorithm:
                             count += 1
                     x, y = x + dx, y + dy
                 lines.append([count, jump_count, block])
+        return lines
+
+    def _get_position_score(self, x: int, y: int) -> int:
+        pass
