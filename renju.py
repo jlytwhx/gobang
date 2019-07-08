@@ -36,6 +36,12 @@ class Renju:
             self.place_at(my_output['x'], my_output['y'])
 
     def place_at(self, x: int, y: int):
+        """
+        安放棋子
+        :param x:
+        :param y:
+        :return:
+        """
         if x == -1 and y == -1:
             self._my_color = 1 if self._my_color == 2 else 2  # 交换颜色
             return
@@ -43,7 +49,7 @@ class Renju:
         self._chess_flag = 1 if self._chess_flag == 2 else 2  # 更改棋子临时变量
 
     def analyse(self):
-        self.output(random.randint(0, 15), random.randint(0, 15))
+        self.output(random.randint(0, 14), random.randint(0, 14))
 
     @staticmethod
     def output(x: int, y: int, msg: str = None):
@@ -51,3 +57,7 @@ class Renju:
             "response": {'x': x, 'y': y},
             "data": msg
         }))
+
+
+if __name__ == '__main__':
+    Renju().analyse()
