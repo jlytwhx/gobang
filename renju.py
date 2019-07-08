@@ -10,6 +10,7 @@ class Renju:
         self._board = [[0 for _ in range(15)] for _ in range(15)]  # 创建15x15棋盘 0为空 1为黑棋 2为白棋
         self._my_color = 2  # 1为黑手 2为白手 默认黑手 每收到或者发出{-1,-1}请求后换手
         self._chess_flag = 1  # 棋子临时变量 1时下一步应为黑手 2时下一步为白手
+        self._step = 1
         self._read_json()
         self._reload_data()
 
@@ -46,13 +47,16 @@ class Renju:
         if x == -1 and y == -1:
             self._my_color = 1 if self._my_color == 2 else 2  # 交换颜色
             return
+        if x == 255:
+            return
         self._board[x][y] = self._chess_flag  # 下棋
         self._chess_flag = 1 if self._chess_flag == 2 else 2  # 更改棋子临时变量
+        self._step += 1
 
     def analyse(self):
-        lx = self.requests_data[-1]['x']
-        ly = self.requests_data[-1]['y']
-        x, y, data = Algorithm(self._board, self._my_color, self.last_msg).analyse(lx, ly)
+        lx = self.requests_data[-1]['y']
+        ly = self.requests_data[-1]['x']
+        x, y, data = Algorithm(self._board, self._step, self._my_color, self.last_msg).analyse([lx, ly])
         self.output(x, y, data)
 
     @staticmethod

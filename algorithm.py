@@ -3,7 +3,8 @@ import json
 
 
 class Algorithm:
-    def __init__(self, board, my_color, status=None):
+    def __init__(self, board, step, my_color, status=None):
+        self.step = step
         self.board = board  # 15x15棋盘
         self.my_color = my_color  # 我的颜色 1为黑棋 2为白棋
         if not status:
@@ -94,6 +95,11 @@ class Algorithm:
         return min(line_position_score[x], line_position_score[y])
 
     def _get_move_score(self, move: List[int]):
+        """
+        计算某一点的粉
+        :param move:
+        :return:
+        """
 
         def cal_final_score(line_score):
             """
@@ -140,10 +146,15 @@ class Algorithm:
             my_score, other_score = self._cal_score(''.join(line))
             my_line_score.append(my_score)
             other_line_score.append(other_score)
-        return cal_final_score(my_line_score) + cal_final_score(other_line_score) + self._get_position_score(move[0],
-                                                                                                             move[1])
+        return cal_final_score(my_line_score) + cal_final_score(other_line_score) * 0.8 + self._get_position_score(
+            move[0],
+            move[1])
 
     def _save_status(self):
+        """
+        保存score数据到json
+        :return:
+        """
         score_list = []
         for x in range(15):
             for y in range(15):
@@ -151,41 +162,52 @@ class Algorithm:
         return json.dumps(score_list)
 
     def _load_status(self, score_list):
+        """
+        从json中恢复数据
+        :param score_list:
+        :return:
+        """
         for i in range(len(score_list)):
             x, y = divmod(i, 15)
             self.score[x][y] = score_list[i]
 
-    def _cal_neighbor(self, x, y):
-        for dx in range(-7, 7):
-            for dy in range(-7, 7):
-                nx, ny = x + dx, y + dy
-                if self._is_legal(nx, ny):
-                    self.score[nx][ny] = self._get_move_score([nx, ny])
-
-    def analyse(self, x: int, y: int):
+    def _calculate_all_score(self):
         """
-        x,y为最后一手下的棋位置
+        计算所有可行点score
+        :return:
         """
-        max_position = (0, 0)
-        max_score = 0
         for x in range(15):
             for y in range(15):
                 if self._is_legal(x, y):
                     self.score[x][y] = self._get_move_score([x, y])
                 else:
                     self.score[x][y] = -100
-        # for line in self.score:
-        #     print(line)
 
-        # for x in range(15):
-        #     for y in range(15):
-        #         if not self._is_legal(x, y):
-        #             continue
-        #         if self.score[x][y] > max_score:
-        #             max_position = (x, y)
-        #             max_score = self.score[x][y]
+    def analyse(self, last_position):
+        """
+        x,y为最后一手下的棋位置
+        """
+        self._calculate_all_score()
         one_d_score = [self.score[x][y] for x in range(15) for y in range(15)]
         max_score = max(one_d_score)
         max_score_index = one_d_score.index(max_score)
+
+        if self.step <= 4:
+            # 恶心人的算法
+            min_score_index = one_d_score.index(0)
+
+            if self.my_color == 2:
+                if self.step == 2:
+                    x, y = divmod(min_score_index, 15)
+                    return x, y, None
+                if self.step == 4 and last_position[0] != -1:
+                    return 255, 255, None
+            else:
+                if self.step == 3:
+                    lx, ly = last_position
+                    if lx <= 3 or lx >= 10 or ly <= 3 or ly >= 10:
+                        x, y = divmod(min_score_index, 15)
+                        return x, y, None
+
         x, y = divmod(max_score_index, 15)
         return x, y, self._save_status()
