@@ -1,5 +1,5 @@
 import json
-import random
+from algorithm import Algorithm
 
 
 class Renju:
@@ -32,8 +32,9 @@ class Renju:
         for i in range(len(self.responses_data)):
             my_input = self.requests_data[i]  # i回合我的输入
             my_output = self.responses_data[i]  # i回合我的输出
-            self.place_at(my_input['x'], my_input['y'])
-            self.place_at(my_output['x'], my_output['y'])
+            self.place_at(my_input['y'], my_input['x'])
+            self.place_at(my_output['y'], my_output['x'])
+        self.place_at(self.requests_data[-1]['y'], self.requests_data[-1]['x'])
 
     def place_at(self, x: int, y: int):
         """
@@ -49,12 +50,15 @@ class Renju:
         self._chess_flag = 1 if self._chess_flag == 2 else 2  # 更改棋子临时变量
 
     def analyse(self):
-        self.output(random.randint(0, 14), random.randint(0, 14))
+        lx = self.requests_data[-1]['x']
+        ly = self.requests_data[-1]['y']
+        x, y, data = Algorithm(self._board, self._my_color, self.last_msg).analyse(lx, ly)
+        self.output(x, y, data)
 
     @staticmethod
     def output(x: int, y: int, msg: str = None):
         print(json.dumps({
-            "response": {'x': x, 'y': y},
+            "response": {'x': y, 'y': x},
             "data": msg
         }))
 

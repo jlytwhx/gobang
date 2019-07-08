@@ -1,149 +1,191 @@
 from typing import List
+import json
 
 
 class Algorithm:
-    def __init__(self, board, my_color):
+    def __init__(self, board, my_color, status=None):
         self.board = board  # 15x15棋盘
         self.my_color = my_color  # 我的颜色 1为黑棋 2为白棋
-        self.score_dict = {
-            'live_Five': 1000000,
-            'live_Four': 100000,
-            'sleep_Four': 10000,
-            'live_Three': 1000,
-            'live_Two': 100,
-            'sleep_Three': 100,
-            'live_One': 10,
-            'sleep_Two': 10,
-            'sleep_One': 1,
-            'unknown': 0
+        if not status:
+            self.score = [[self._get_position_score(x, y) for x in range(15)] for y in range(15)]
+        else:
+            self.score = [[0 for _ in range(15)] for _ in range(15)]
+            self._load_status(json.loads(status))
+
+    def _cal_score(self, line: str) -> List[int]:
+        """
+        计算得分
+        :param line:五子
+        :return:
+        """
+        if self.my_color == 2:  # 自己为白棋,按位取反
+            my_line = ''.join([x if x == '0' else ('2' if x == '1' else '1') for x in line])
+            other_line = line.replace('@', '1')
+        else:  # 自己为黑棋
+            my_line = line.replace('@', '1')
+            other_line = ''.join([x if x == '0' else ('2' if x == '1' else '1') for x in line])
+        score_table = {
+            '11111': 100000,  # 己方获胜
+            '011110': 10000,  # 活四
+            '011112': 500,  # 眠四
+            '211110': 500,
+            '10111': 500,
+            '11011': 500,
+            '11101': 500,
+            '01110': 200,  # 活三,
+            '010110': 200,
+            '011010': 200,
+            '001112': 50,  # 眠三，
+            '211100': 50,
+            '010112': 50,
+            '011012': 50,
+            '211010': 50,
+            '210110': 50,
+            '10011': 50,
+            '10101': 50,
+            '2011102': 50,
+            '00110': 5,  # 活二
+            '01100': 5,
+            '01010': 5,
+            '010010': 5,
+            '000112': 3,  # 眠二
+            '001012': 3,
+            '010012': 3,
+            '211000': 3,
+            '210100': 3,
+            '210010': 3,
+            '10001': 3,
+            '2010102': 3,
+            '2011002': 3,
+            '2001102': 3,
+            '2112': -5,  # 死棋
+            '21112': -5,
+            '211112': -5
         }
+        max_my = 0
+        max_other = 0
+        for k, v in score_table.items():
+            if not max_my and k in my_line:
+                max_my = v
+            if not max_other and k in other_line:
+                max_other = v
+            if all([max_other, max_my]):
+                return [max_my, max_other]
+        return [max_my, max_other]
 
     def _is_legal(self, x: int, y: int) -> bool:
         """
         判断落子是否合法
         """
-        return self._is_on_board(x, y) and self.board[x][y] != 0
+        return self._is_on_board(x, y) and self.board[x][y] == 0
 
     def _is_on_board(self, x: int, y: int) -> bool:
         """
         判断落子是否在棋盘上
         """
-        return x < len(self.board) and y < len(self.board)
+        return 0 <= x < len(self.board) and 0 <= y < len(self.board)
 
-    def _get_position_all_line(self, position: List[int, int], color: int) -> List[
-        List[int, List[int, int], List[bool, bool]]]:
-        lines = []
-        other_color = 1 if color == 2 else 2  # 对手颜色
-        for direction in [[0, 1], [0, -1], [1, 1], [1, -1]]:
-            dx, dy = direction
-            count = 1  # 连星数
-            jump_count = [0, 0]  # 顺、反方向跳开一个空格之后的连星数
-            jump_flag = [False, False]  # 顺、反方向跳开一个空格的标志
-            block = [False, False]  # 顺、反方向是否堵死
-            for i, v in enumerate([1, -1]):  # 顺、反方向分别用1、-1表示
-                dx, dy = v * dx, v * dy  # 步幅
-                x, y = position[0] + dx, position[1] + dy  # 先走一步
-                while True:
-                    if not self._is_on_board(x, y) or self.board[x][y] != other_color:  # 不在棋盘内，或对方棋子
-                        block[i] = True  # 被堵死
-                        break
-                    if not self.board[x][y]:  # 为空
-                        if not self._is_on_board(x + dx, y + dy) or self.board[x + dx][y + dy] != color:
-                            # 且下一格，不在棋盘内、或者非己方棋子
-                            break
-                        if jump_flag[i]:  # 前面已经跳了一格了，则终止
-                            break  # 能力所限，不考虑又跳一格的情况！！！
-                        else:
-                            jump_flag[i] = True
-                    elif self.board[x][y] == color:
-                        if jump_flag[i]:
-                            jump_count[i] += 1
-                        else:
-                            count += 1
-                    x, y = x + dx, y + dy
-                lines.append([count, jump_count, block])
-        return lines
-
-    def _get_position_score(self, x: int, y: int) -> int:
+    @staticmethod
+    def _get_position_score(x, y):
         """
-            lianxin == [[2,[0,0],[True,False]],
-                [1,[0,0],[True,False]],
-                [3,[1,0],[False,False]],
-                [3,[2,1],[True,False]]]
-        :param x:
-        :param y:
-        :return:
+        计算位置分
         """
-        sum_score = 0
-        for color in [1, 2]:
-            for count, jump_count, block in self._get_position_all_line([x, y], color):
-                if all(jump_count):  # 情况一：两边跳
-                    if all(block):  # 两边堵住了
-                        if count + jump_count[0] + jump_count[1] + 2 < 5:
-                            continue
-                    else:
-                        # 这边跳了
-                        if block[0]:  # 有跳的，先把分数加了再说（查表加分）
-                            sum_score += scores[jump_count[0] * 2 - 2]  # 加死的分
-                            sum_score += min(scores[(jump_count[0] + count) * 2 - 2] * 0.2, 200)  # 上一级的20%
-                        else:
-                            sum_score += scores[jump_count[0] * 2 - 1]  # 加活的分
-                            sum_score += min(scores[(jump_count[0] + count) * 2 - 1] * 0.2, 200)  # 上一级的20%
+        line_position_score = [0, 1, 2, 3, 4, 5, 6, 7, 6, 5, 4, 3, 2, 1, 0]
+        return min(line_position_score[x], line_position_score[y])
 
-                        # 这边也跳了
-                        if block[1]:  # 有跳的，先把分数加了再说（查表加分）
-                            sum_score += scores[jump_count[1] * 2 - 2]  # 加死的分
-                            sum_score += min(scores[(jump_count[1] + count) * 2 - 2] * 0.2, 200)  # 上一级的20%
-                        else:
-                            sum_score += scores[jump_count[1] * 2 - 1]  # 加活的分
-                            sum_score += min(scores[(jump_count[1] + count) * 2 - 1] * 0.2, 200)  # 上一级的20%
+    def _get_move_score(self, move: List[int]):
 
-                        # 中间
-                        sum_score += scores[count * 2 - 1]  # 中间加活的分
-                        
-                elif jump_count[0] > 0 and jump_count[1] == 0:  # 情况二：有一边跳
-                    if all(block):
-                        if count + jump_count[0] + jump_count[1] + 1 < 5: continue
-                    else:
-                        # 跳的这边
-                        if block[0] == True:  # 先把跳那边的分数加了再说（查表加分）
-                            sum_score += scores[jump_count[0] * 2 - 2]  # 加死的分
-                            sum_score += min(scores[(jump_count[0] + count) * 2 - 2] * 0.2, 200)  # 上一级的20%
-                        else:
-                            sum_score += scores[jump_count[0] * 2 - 1]  # 加活的分
-                            sum_score += min(scores[(jump_count[0] + count) * 2 - 1] * 0.2, 200)  # 上一级的20%
+        def cal_final_score(line_score):
+            """
+            计算最终得分
+            :param line_score:
+            :return:
+            """
+            double_score = 0
+            score_dict = {}
+            for score in line_score:
+                if score not in score_dict:
+                    score_dict[score] = 1
+                else:
+                    score_dict[score] += 1
+            if 500 in score_dict and score_dict[500] == 2:  # 双冲四
+                double_score = 10000
+            elif 500 in score_dict and 200 in score_dict:  # 冲四活三
+                double_score = 10000
+            elif 200 in score_dict and score_dict[200] == 2:  # 双活三
+                double_score = 5000
+            elif 200 in score_dict and 50 in score_dict:  # 活三眠三
+                double_score = 1000
+            elif 5 in score_dict and score_dict[5] == 2:  # 双活二
+                double_score = 100
+            elif 5 in score_dict and 3 in score_dict:  # 活二眠二
+                double_score = 10
+            return max(double_score, max(line_score))
 
-                        # 没跳的那边
-                        if block[1] == True:
-                            sum_score += scores[count * 2 - 2]  # 加死的分
-                        else:
-                            sum_score += scores[count * 2 - 1]  # 加活的分
+        my_line_score = []
+        other_line_score = []
+        for dx, dy in [(0, 1), (1, 0), (1, 1), (1, -1)]:
+            x, y = move
+            line = []
+            x, y = x + dx, y + dy
+            while self._is_on_board(x, y):
+                line.append(str(self.board[x][y]))
+                x, y = x + dx, y + dy
+            line.insert(0, '@')
+            x, y = move
+            x, y = x - dx, y - dy
+            while self._is_on_board(x, y):
+                line.insert(0, str(self.board[x][y]))
+                x, y = x - dx, y - dy
+            my_score, other_score = self._cal_score(''.join(line))
+            my_line_score.append(my_score)
+            other_line_score.append(other_score)
+        return cal_final_score(my_line_score) + cal_final_score(other_line_score) + self._get_position_score(move[0],
+                                                                                                             move[1])
 
-                elif jump_count[1] > 0 and jump_count[0] == 0:  # 情况三：另一边跳
-                    if all(block):
-                        if count + jump_count[0] + jump_count[1] + 1 < 5: continue
-                    else:
-                        # 跳的这边
-                        if block[1] == True:  # 先把跳那边的分数加了再说（查表加分）
-                            sum_score += scores[jump_count[1] * 2 - 2]  # 加死的分
-                            sum_score += min(scores[(jump_count[1] + count) * 2 - 2] * 0.2, 200)  # 上一级的20%
-                        else:
-                            sum_score += scores[jump_count[1] * 2 - 1]  # 加活的分
-                            sum_score += min(scores[(jump_count[1] + count) * 2 - 1] * 0.2, 200)  # 上一级的20%
+    def _save_status(self):
+        score_list = []
+        for x in range(15):
+            for y in range(15):
+                score_list.append(self.score[x][y])
+        return json.dumps(score_list)
 
-                        # 没跳的那边
-                        if block[0] == True:
-                            sum_score += scores[count * 2 - 2]  # 加死的分
-                        else:
-                            sum_score += scores[count * 2 - 1]  # 加活的分
+    def _load_status(self, score_list):
+        for i in range(len(score_list)):
+            x, y = divmod(i, 15)
+            self.score[x][y] = score_list[i]
 
-                elif jump_count[0] == 0 and jump_count[1] == 0:  # 情况四：两边都没跳
-                    if all(block):  # 两边都堵死了
-                        if count == 5:  # 等于5才加，否则不加
-                            sum_score += scores[count * 2 - 2]  # -1,-2一样
-                    elif block[0] or block[1]:  # 只堵死一边
-                        sum_score += scores[count * 2 - 2]  # 加死的分
-                    else:
-                        sum_score += scores[count * 2 - 1]  # 加活的分
+    def _cal_neighbor(self, x, y):
+        for dx in range(-7, 7):
+            for dy in range(-7, 7):
+                nx, ny = x + dx, y + dy
+                if self._is_legal(nx, ny):
+                    self.score[nx][ny] = self._get_move_score([nx, ny])
 
-                return sum_score
+    def analyse(self, x: int, y: int):
+        """
+        x,y为最后一手下的棋位置
+        """
+        max_position = (0, 0)
+        max_score = 0
+        for x in range(15):
+            for y in range(15):
+                if self._is_legal(x, y):
+                    self.score[x][y] = self._get_move_score([x, y])
+                else:
+                    self.score[x][y] = -100
+        # for line in self.score:
+        #     print(line)
+
+        # for x in range(15):
+        #     for y in range(15):
+        #         if not self._is_legal(x, y):
+        #             continue
+        #         if self.score[x][y] > max_score:
+        #             max_position = (x, y)
+        #             max_score = self.score[x][y]
+        one_d_score = [self.score[x][y] for x in range(15) for y in range(15)]
+        max_score = max(one_d_score)
+        max_score_index = one_d_score.index(max_score)
+        x, y = divmod(max_score_index, 15)
+        return x, y, self._save_status()
