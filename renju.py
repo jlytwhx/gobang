@@ -1,4 +1,5 @@
 import json
+import random
 
 
 class Renju:
@@ -42,7 +43,7 @@ class Renju:
         self._chess_flag = 1 if self._chess_flag == 2 else 2  # 更改棋子临时变量
 
     def analyse(self):
-        pass
+        self.output(random.randint(0, 15), random.randint(0, 15))
 
     @staticmethod
     def output(x: int, y: int, msg: str = None):
