@@ -5,10 +5,12 @@ class Renju:
     def __init__(self):
         self.requests_data = []
         self.responses_data = []
-        self.last_msg = None
+        self.last_msg = None  # 上回合保存信息
+        self._board = [[0 for _ in range(15)] for _ in range(15)]  # 创建15x15棋盘 0为空 1为黑棋 2为白棋
+        self._my_color = 2  # 1为黑手 2为白手 默认黑手 每收到或者发出{-1,-1}请求后换手
+        self._chess_flag = 1  # 棋子临时变量 1时下一步应为黑手 2时下一步为白手
         self._read_json()
         self._reload_data()
-        self._board = [[0 for _ in range(15)] for _ in range(15)]  # 创建15x15棋盘 0为空 1为黑棋 2为白棋
 
     def _read_json(self):
         """
@@ -29,7 +31,15 @@ class Renju:
         for i in range(len(self.responses_data)):
             my_input = self.requests_data[i]  # i回合我的输入
             my_output = self.responses_data[i]  # i回合我的输出
-            print(my_input, my_output)
+            self.place_at(my_input['x'], my_input['y'])
+            self.place_at(my_output['x'], my_output['y'])
+
+    def place_at(self, x: int, y: int):
+        if x == -1 and y == -1:
+            self._my_color = 1 if self._my_color == 2 else 2  # 交换颜色
+            return
+        self._board[x][y] = self._chess_flag  # 下棋
+        self._chess_flag = 1 if self._chess_flag == 2 else 2  # 更改棋子临时变量
 
     def analyse(self):
         pass
