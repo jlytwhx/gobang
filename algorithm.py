@@ -30,7 +30,8 @@ class Algorithm:
         """
         return x < len(self.board) and y < len(self.board)
 
-    def _get_position_all_line(self, position: List[int, int], color: int) -> List[List[int, List[int, int], List[bool, bool]]]:
+    def _get_position_all_line(self, position: List[int, int], color: int) -> List[
+        List[int, List[int, int], List[bool, bool]]]:
         lines = []
         other_color = 1 if color == 2 else 2  # 对手颜色
         for direction in [[0, 1], [0, -1], [1, 1], [1, -1]]:
@@ -64,4 +65,85 @@ class Algorithm:
         return lines
 
     def _get_position_score(self, x: int, y: int) -> int:
-        pass
+        """
+            lianxin == [[2,[0,0],[True,False]],
+                [1,[0,0],[True,False]],
+                [3,[1,0],[False,False]],
+                [3,[2,1],[True,False]]]
+        :param x:
+        :param y:
+        :return:
+        """
+        sum_score = 0
+        for color in [1, 2]:
+            for count, jump_count, block in self._get_position_all_line([x, y], color):
+                if all(jump_count):  # 情况一：两边跳
+                    if all(block):  # 两边堵住了
+                        if count + jump_count[0] + jump_count[1] + 2 < 5:
+                            continue
+                    else:
+                        # 这边跳了
+                        if block[0]:  # 有跳的，先把分数加了再说（查表加分）
+                            sum_score += scores[jump_count[0] * 2 - 2]  # 加死的分
+                            sum_score += min(scores[(jump_count[0] + count) * 2 - 2] * 0.2, 200)  # 上一级的20%
+                        else:
+                            sum_score += scores[jump_count[0] * 2 - 1]  # 加活的分
+                            sum_score += min(scores[(jump_count[0] + count) * 2 - 1] * 0.2, 200)  # 上一级的20%
+
+                        # 这边也跳了
+                        if block[1]:  # 有跳的，先把分数加了再说（查表加分）
+                            sum_score += scores[jump_count[1] * 2 - 2]  # 加死的分
+                            sum_score += min(scores[(jump_count[1] + count) * 2 - 2] * 0.2, 200)  # 上一级的20%
+                        else:
+                            sum_score += scores[jump_count[1] * 2 - 1]  # 加活的分
+                            sum_score += min(scores[(jump_count[1] + count) * 2 - 1] * 0.2, 200)  # 上一级的20%
+
+                        # 中间
+                        sum_score += scores[count * 2 - 1]  # 中间加活的分
+                        
+                elif jump_count[0] > 0 and jump_count[1] == 0:  # 情况二：有一边跳
+                    if all(block):
+                        if count + jump_count[0] + jump_count[1] + 1 < 5: continue
+                    else:
+                        # 跳的这边
+                        if block[0] == True:  # 先把跳那边的分数加了再说（查表加分）
+                            sum_score += scores[jump_count[0] * 2 - 2]  # 加死的分
+                            sum_score += min(scores[(jump_count[0] + count) * 2 - 2] * 0.2, 200)  # 上一级的20%
+                        else:
+                            sum_score += scores[jump_count[0] * 2 - 1]  # 加活的分
+                            sum_score += min(scores[(jump_count[0] + count) * 2 - 1] * 0.2, 200)  # 上一级的20%
+
+                        # 没跳的那边
+                        if block[1] == True:
+                            sum_score += scores[count * 2 - 2]  # 加死的分
+                        else:
+                            sum_score += scores[count * 2 - 1]  # 加活的分
+
+                elif jump_count[1] > 0 and jump_count[0] == 0:  # 情况三：另一边跳
+                    if all(block):
+                        if count + jump_count[0] + jump_count[1] + 1 < 5: continue
+                    else:
+                        # 跳的这边
+                        if block[1] == True:  # 先把跳那边的分数加了再说（查表加分）
+                            sum_score += scores[jump_count[1] * 2 - 2]  # 加死的分
+                            sum_score += min(scores[(jump_count[1] + count) * 2 - 2] * 0.2, 200)  # 上一级的20%
+                        else:
+                            sum_score += scores[jump_count[1] * 2 - 1]  # 加活的分
+                            sum_score += min(scores[(jump_count[1] + count) * 2 - 1] * 0.2, 200)  # 上一级的20%
+
+                        # 没跳的那边
+                        if block[0] == True:
+                            sum_score += scores[count * 2 - 2]  # 加死的分
+                        else:
+                            sum_score += scores[count * 2 - 1]  # 加活的分
+
+                elif jump_count[0] == 0 and jump_count[1] == 0:  # 情况四：两边都没跳
+                    if all(block):  # 两边都堵死了
+                        if count == 5:  # 等于5才加，否则不加
+                            sum_score += scores[count * 2 - 2]  # -1,-2一样
+                    elif block[0] or block[1]:  # 只堵死一边
+                        sum_score += scores[count * 2 - 2]  # 加死的分
+                    else:
+                        sum_score += scores[count * 2 - 1]  # 加活的分
+
+                return sum_score
